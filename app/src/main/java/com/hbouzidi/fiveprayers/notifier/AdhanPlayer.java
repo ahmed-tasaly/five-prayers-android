@@ -31,72 +31,65 @@ import javax.inject.Singleton;
 public class AdhanPlayer {
 
     private final MediaPlayer adhanMediaPlayer;
-    private final MediaPlayer douaMediaPlayer;
     private final PreferencesHelper preferencesHelper;
     private final Context context;
+    private boolean mediaCompleted;
 
     @Inject
     public AdhanPlayer(PreferencesHelper preferencesHelper, Context context) {
         this.preferencesHelper = preferencesHelper;
         this.context = context;
         adhanMediaPlayer = new MediaPlayer();
-        douaMediaPlayer = new MediaPlayer();
     }
 
     public void playAdhan(boolean fajr) {
-        if (!adhanMediaPlayer.isPlaying() || !douaMediaPlayer.isPlaying()) {
+        if (!adhanMediaPlayer.isPlaying()) {
             try {
-                initializeAdhanMediaPlayer(fajr);
-                initializeDouaeMediaPlayer();
-            } catch (IOException e) {
+                mediaCompleted = false;
+                prepareMediaPlayer(getAdhanUri(fajr));
+            } catch (Exception e) {
                 Log.e("AdhanPlayer", "Cannot play Adhan", e);
-            }
-
-            adhanMediaPlayer.start();
-
-            if (preferencesHelper.isDouaeAfterAdhanEnabled() &&
-                    !Uri.parse(preferencesHelper.getAdhanCaller()).equals(UiUtils.uriFromRaw(PreferencesConstants.SHORT_PRAYER_CALL, context)) &&
-                    !Uri.parse(preferencesHelper.getAdhanCaller()).equals(UiUtils.uriFromRaw(PreferencesConstants.TAKBEER_ONLY_CALL, context))) {
-
-                adhanMediaPlayer.setNextMediaPlayer(douaMediaPlayer);
             }
         }
 
-        setOnCompletionListeners();
+        MediaSessionCompat adhanMediaSession = createMediaSession();
+
+        adhanMediaPlayer.setOnPreparedListener(mp -> adhanMediaPlayer.start());
+
+        adhanMediaPlayer.setOnCompletionListener(mp -> {
+            if (preferencesHelper.isDouaeAfterAdhanEnabled()
+                    && !Uri.parse(getCallerUriString(fajr)).equals(UiUtils.uriFromRaw(PreferencesConstants.SHORT_PRAYER_CALL, context))
+                    && !Uri.parse(getCallerUriString(fajr)).equals(UiUtils.uriFromRaw(PreferencesConstants.TAKBEER_ONLY_CALL, context))
+            ) {
+
+                try {
+                    if (!mediaCompleted) {
+                        prepareMediaPlayer(getDouaeUri(context));
+                        mediaCompleted = true;
+                    } else {
+                        adhanMediaSession.release();
+                    }
+                } catch (Exception e) {
+                    Log.e("AdhanPlayer", "Cannot play Douae", e);
+                }
+            } else {
+                adhanMediaSession.release();
+            }
+        });
     }
 
     public void stopAdhan() {
-        if (adhanMediaPlayer.isPlaying()) {
+        if (adhanMediaPlayer != null && adhanMediaPlayer.isPlaying()) {
             adhanMediaPlayer.stop();
         }
-
-        if (douaMediaPlayer.isPlaying()) {
-            douaMediaPlayer.stop();
-        }
     }
 
-    public void setOnCompletionListeners() {
-        MediaSessionCompat adhanMediaSession = createMediaSession("Adhan");
-        MediaSessionCompat douaeMediaSession = createMediaSession("Douae");
-
-        adhanMediaPlayer.setOnCompletionListener(mp -> adhanMediaSession.release());
-        douaMediaPlayer.setOnCompletionListener(mp -> douaeMediaSession.release());
-    }
-
-    private void initializeAdhanMediaPlayer(boolean fajr) throws IOException {
+    private void prepareMediaPlayer(Uri uri) throws IOException {
         adhanMediaPlayer.reset();
-        adhanMediaPlayer.setDataSource(context, getAdhanUri(fajr));
+        adhanMediaPlayer.setDataSource(context, uri);
         setAudioAttribute(adhanMediaPlayer);
         adhanMediaPlayer.setLooping(false);
-        adhanMediaPlayer.prepare();
-    }
-
-    private void initializeDouaeMediaPlayer() throws IOException {
-        douaMediaPlayer.reset();
-        douaMediaPlayer.setDataSource(context, getDouaeUri(context));
-        setAudioAttribute(douaMediaPlayer);
-        douaMediaPlayer.setLooping(false);
-        douaMediaPlayer.prepare();
+        adhanMediaPlayer.prepareAsync();
     }
 
     private void setAudioAttribute(MediaPlayer mediaPlayer) {
@@ -123,8 +116,8 @@ public class AdhanPlayer {
         return Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + context.getPackageName() + "/" + R.raw.douae_after_athan);
     }
 
-    private MediaSessionCompat createMediaSession(String tag) {
-        MediaSessionCompat mediaSession = new MediaSessionCompat(context, tag);
+    private MediaSessionCompat createMediaSession() {
+        MediaSessionCompat mediaSession = new MediaSessionCompat(context, "Adhan");
         mediaSession.setPlaybackState(new PlaybackStateCompat.Builder()
                 .setState(PlaybackStateCompat.STATE_PLAYING, 0, 0)
                 .build());
@@ -143,5 +136,9 @@ public class AdhanPlayer {
         mediaSession.setActive(true);
 
         return mediaSession;
+    }
+
+    private String getCallerUriString(boolean fajr) {
+        return fajr ? preferencesHelper.getFajrAdhanCaller() : preferencesHelper.getAdhanCaller();
     }
 }

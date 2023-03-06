@@ -1,6 +1,6 @@
 <resources>
-    <string name="whats_new_dialog_title">ميزة جديدة</string>
-    <string name="whats_new_dialog_message">لقد أضفنا إشعارات الآية اليومية والوَدَجَة الجديدة مع معلومات الطقس</string>
+    <string name="whats_new_dialog_title">إصلاح الخلل</string>
+    <string name="whats_new_dialog_message">إصلاح الأذان في بعض الأجهزة</string>
 
     <string name="about_five_prayers">حول التطبيق</string>
     <string name="open_source_projects_used">مشاريع مفتوحة المصدر</string>
@@ -91,8 +91,12 @@
 
     <string name="app_intro_frag_3_5_description">نحتاج أيضًا إلى إذنك لاستخدام إمكانات الموقع في الخلفية
         لتحديث مواقيت الصلاة دون فتح التطبيق ، يرجى تحديد خيار السماح طوال الوقت في الشاشة التالية (موصى به)</string>
-    <string name="app_intro_frag_4_title">استمتع !</string>
-    <string name="app_intro_frag_4_description">تقدم Five Prayers Android ميزات رائعة لجميع المستخدمين
+
+    <string name="app_intro_frag_4_title">السماح للتطبيق بإرسال الإشعارات</string>
+    <string name="app_intro_frag_4_description">نحتاج إلى إذنك لإرسال إشعارات الأذان ، بدون ذلك إشعارات الأذان لن تعمل !الرجاء تحديد \ "سماح \" في الشاشة التالية (موصى به)</string>
+
+    <string name="app_intro_frag_5_title">استمتع !</string>
+    <string name="app_intro_frag_5_description">تقدم Five Prayers Android ميزات رائعة لجميع المستخدمين
 مثل: أوقات الصلاة حول العالم ، طرق حساب مختلفة ، إشعارات ، قراءة الأذان ، إتجاه القبلة والمزيد …</string>
 
     <string name="app_intro_permission_denied_dialog_title">إعلام</string>

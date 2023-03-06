@@ -34,6 +34,7 @@ import com.hbouzidi.fiveprayers.common.ComplementaryTimingEnum;
 import com.hbouzidi.fiveprayers.common.PrayerEnum;
 import com.hbouzidi.fiveprayers.job.WorkCreator;
 import com.hbouzidi.fiveprayers.preferences.PreferencesConstants;
+import com.hbouzidi.fiveprayers.preferences.PreferencesHelper;
 import com.hbouzidi.fiveprayers.timings.DayPrayer;
 import com.hbouzidi.fiveprayers.ui.clock.AnalogClock;
 import com.hbouzidi.fiveprayers.ui.widget.WidgetUpdater;
@@ -74,6 +75,9 @@ public class HomeFragment extends Fragment {
     @Inject
     WidgetUpdater widgetUpdater;
 
+    @Inject
+    PreferencesHelper preferencesHelper;
+
     private LocalDateTime todayDate;
     private CountDownTimer TimeRemainingCTimer;
 
@@ -102,6 +106,8 @@ public class HomeFragment extends Fragment {
     private AnalogClock asrClock;
     private AnalogClock maghribClock;
     private AnalogClock ichaClock;
+
+    private ImageView calculationModeIndicator;
 
     private CircularProgressBar circularProgressBar;
     private String adhanCallsPreferences;
@@ -259,6 +265,8 @@ public class HomeFragment extends Fragment {
         asrLabel = rootView.findViewById(R.id.asr_label_text_view);
         maghribLabel = rootView.findViewById(R.id.maghrib_label_text_view);
         ichaLabel = rootView.findViewById(R.id.icha_label_text_view);
+
+        calculationModeIndicator = rootView.findViewById(R.id.calculation_mode_indicator);
     }
 
     private void updateTimingsTextViews(DayPrayer dayPrayer) {
@@ -352,16 +360,11 @@ public class HomeFragment extends Fragment {
         });
 
         String locationText;
-        if (dayPrayer.getCity() != null) {
+        if (dayPrayer.getCity() != null && dayPrayer.getCountry() != null) {
             locationText = StringUtils.capitalize(dayPrayer.getCity());
-        } else {
-            locationText = getString(R.string.common_offline);
-        }
-
-        if (dayPrayer.getCountry() != null) {
             locationText += StringUtils.capitalize(" - " + dayPrayer.getCountry() + " (" + timezone + ")");
         } else {
-            locationText += StringUtils.capitalize(" (" + timezone + ")");
+            locationText = UiUtils.convertAndFormatCoordinates(dayPrayer.getLatitude(), dayPrayer.getLongitude());
         }
 
         locationTextView.setText(locationText);
@@ -401,6 +404,8 @@ public class HomeFragment extends Fragment {
             }
             return false;
         });
+
+        calculationModeIndicator.setVisibility(preferencesHelper.isOfflineCalculationMode() ? View.VISIBLE : View.GONE);
 
 //        HijriHoliday holiday = HijriHoliday.getHoliday(dayPrayer.getHijriDay(), dayPrayer.getHijriMonthNumber());
 //
