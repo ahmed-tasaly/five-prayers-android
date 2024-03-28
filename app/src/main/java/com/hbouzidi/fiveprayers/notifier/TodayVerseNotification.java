@@ -66,7 +66,7 @@ public class TodayVerseNotification extends BaseNotification {
     public void createNotification(@NonNull List<Ayah> todayVerse) {
         String notificationTitle = context.getString(R.string.daily_verse_notification_title);
         String notificationDescription;
-        String actionTitle = context.getString(R.string.daily_verse_notification_action_title);
+        String actionTitle = context.getString(R.string.common_see_more);
 
         Locale systemLocale = ConfigurationCompat
                 .getLocales(Resources.getSystem().getConfiguration())
@@ -103,16 +103,15 @@ public class TodayVerseNotification extends BaseNotification {
                 .setContentTitle(notificationTitle)
                 .setContentText(notificationDescription)
                 .setContentIntent(pendingIntent)
-                .addAction(R.drawable.ic_book_24dp, actionTitle, getNotificationIntent())
                 .setStyle(new NotificationCompat.BigPictureStyle()
                         .bigPicture(versePicture)
-                        .bigLargeIcon(null)
                 )
                 .setAutoCancel(true);
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             builder.setSmallIcon(android.R.drawable.ic_popup_reminder);
         } else {
+            builder.addAction(R.drawable.ic_book_24dp, actionTitle, getNotificationIntent());
             builder.setSmallIcon(getNotificationIcon());
         }
 

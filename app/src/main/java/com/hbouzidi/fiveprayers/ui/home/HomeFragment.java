@@ -6,6 +6,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -33,6 +35,7 @@ import com.hbouzidi.fiveprayers.R;
 import com.hbouzidi.fiveprayers.common.ComplementaryTimingEnum;
 import com.hbouzidi.fiveprayers.common.PrayerEnum;
 import com.hbouzidi.fiveprayers.job.WorkCreator;
+import com.hbouzidi.fiveprayers.openweathermap.OpenWeatherMapResponse;
 import com.hbouzidi.fiveprayers.preferences.PreferencesConstants;
 import com.hbouzidi.fiveprayers.preferences.PreferencesHelper;
 import com.hbouzidi.fiveprayers.timings.DayPrayer;
@@ -43,6 +46,7 @@ import com.hbouzidi.fiveprayers.utils.PrayerUtils;
 import com.hbouzidi.fiveprayers.utils.TimingUtils;
 import com.hbouzidi.fiveprayers.utils.UiUtils;
 import com.mikhaellopez.circularprogressbar.CircularProgressBar;
+import com.owl93.dpb.CircularProgressView;
 import com.yarolegovich.lovelydialog.LovelyCustomDialog;
 
 import org.apache.commons.lang3.StringUtils;
@@ -110,9 +114,15 @@ public class HomeFragment extends Fragment {
     private ImageView calculationModeIndicator;
 
     private CircularProgressBar circularProgressBar;
+
+    private CircularProgressView circularProgressView;
+
     private String adhanCallsPreferences;
     private String adhanCallKeyPart;
     private Skeleton skeleton;
+    private ImageView weatherStatusImage;
+    private TextView weatherActualTemp;
+    private TextView weatherStatusText;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -166,8 +176,9 @@ public class HomeFragment extends Fragment {
 
             widgetUpdater.updateHomeScreenWidgets(requireContext());
 
-            skeleton.showOriginal();
+            homeViewModel.getOpenWeatherData().observe(getViewLifecycleOwner(), this::updateWeatherInformations);
 
+            skeleton.showOriginal();
             showWhatsNewDialog();
         });
 
@@ -181,6 +192,21 @@ public class HomeFragment extends Fragment {
         });
 
         return rootView;
+    }
+
+    private void updateWeatherInformations(OpenWeatherMapResponse openWeatherMapResponse) {
+        int iconId = requireContext().getResources().getIdentifier("ic_" + openWeatherMapResponse.getWeather().get(0).getIcon(), "mipmap", requireContext().getPackageName());
+        String tempUnit = requireContext().getApplicationContext().getResources().getString(requireContext().getResources().getIdentifier("temperature_unit_" + preferencesHelper.getOpenWeatherUnit(), "string", requireContext().getPackageName()));
+        String description = openWeatherMapResponse.getWeather().get(0).getDescription();
+        int temp = (int) openWeatherMapResponse.getMain().getTemp();
+
+        weatherStatusImage.setImageResource(iconId);
+        weatherActualTemp.setText(String.format(" - %s %s", String.format(Locale.getDefault(), "%1$02d", temp), tempUnit));
+        weatherStatusText.setText(StringUtils.capitalize(description));
+
+        weatherStatusImage.setVisibility(View.VISIBLE);
+        weatherActualTemp.setVisibility(View.VISIBLE);
+        weatherStatusText.setVisibility(View.VISIBLE);
     }
 
     private void showWhatsNewDialog() {
@@ -221,6 +247,13 @@ public class HomeFragment extends Fragment {
         prayerTimetextView = rootView.findViewById(R.id.prayerTimetextView);
         timeRemainingTextView = rootView.findViewById(R.id.timeRemainingTextView);
         circularProgressBar = rootView.findViewById(R.id.circularProgressBar);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
+            circularProgressBar = rootView.findViewById(R.id.circularProgressBar);
+        } else {
+            circularProgressView = rootView.findViewById(R.id.progress_view);
+        }
+
         calculationMethodTextView = rootView.findViewById(R.id.calculation_method_text_view);
 
         fajrClock = rootView.findViewById(R.id.farj_clock_view);
@@ -267,6 +300,10 @@ public class HomeFragment extends Fragment {
         ichaLabel = rootView.findViewById(R.id.icha_label_text_view);
 
         calculationModeIndicator = rootView.findViewById(R.id.calculation_mode_indicator);
+
+        weatherStatusImage = rootView.findViewById(R.id.weather_status_image);
+        weatherActualTemp = rootView.findViewById(R.id.weather_actual_temp);
+        weatherStatusText = rootView.findViewById(R.id.weather_status_text);
     }
 
     private void updateTimingsTextViews(DayPrayer dayPrayer) {
@@ -317,12 +354,29 @@ public class HomeFragment extends Fragment {
         long timeBetween = TimingUtils.getTimeBetweenTwoPrayer(Objects.requireNonNull(timings.get(previousPrayerKey)), Objects.requireNonNull(timings.get(nextPrayerKey)));
 
         String prayerName = requireContext().getResources().getString(
-                getResources().getIdentifier(nextPrayerKey.toString(), "string", requireContext().getPackageName()));
+                getResources().getIdentifier("SHORT_" + nextPrayerKey, "string", requireContext().getPackageName()));
 
         prayerNametextView.setText(prayerName);
         prayerTimetextView.setText(UiUtils.formatTiming(Objects.requireNonNull(timings.get(nextPrayerKey))));
+
         timeRemainingTextView.setText(UiUtils.formatTimeForTimer(timeRemaining));
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            circularProgressView.setText(UiUtils.formatTiming(Objects.requireNonNull(timings.get(nextPrayerKey))));
+
+            TypedArray typedArray = requireContext().getTheme().obtainStyledAttributes(R.styleable.mainStyles);
+            int startColor = typedArray.getColor(R.styleable.mainStyles_progressbarEndColor, ContextCompat.getColor(requireContext(), R.color.textColorPrimary));
+            int endColor = typedArray.getColor(R.styleable.mainStyles_progressbarColor, ContextCompat.getColor(requireContext(), R.color.textColorPrimary));
+
+            Shader textShader = new LinearGradient(0, 0, prayerNametextView.getPaint().measureText(prayerName), prayerNametextView.getTextSize(),
+                    new int[]{startColor, endColor},
+                    null, Shader.TileMode.CLAMP);
+
+            prayerNametextView.getPaint().setShader(textShader);
+            timeRemainingTextView.getPaint().setShader(textShader);
+        }
+
+        cancelTimer();
         startAnimationTimer(timeRemaining, timeBetween, dayPrayer);
     }
 
@@ -418,16 +472,22 @@ public class HomeFragment extends Fragment {
 //        }
     }
 
-    private float getProgressBarPercentage(long timeRemaining, long timeBetween) {
-        return 100 - ((float) (timeRemaining * 100) / (timeBetween));
+    private float getProgressBarPercentage(long millisUntilFinished, long timeBetween) {
+        return ((float) (Math.abs(timeBetween - millisUntilFinished) * 100) / (timeBetween));
     }
 
     private void startAnimationTimer(final long timeRemaining, final long timeBetween, final DayPrayer dayPrayer) {
-        circularProgressBar.setProgressWithAnimation(getProgressBarPercentage(timeRemaining, timeBetween), 1000L);
+
         TimeRemainingCTimer = new CountDownTimer(timeRemaining, 1000L) {
             public void onTick(long millisUntilFinished) {
                 timeRemainingTextView.setText(UiUtils.formatTimeForTimer(millisUntilFinished));
-                circularProgressBar.setProgress(getProgressBarPercentage(timeRemaining, timeBetween));
+
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
+                    circularProgressBar.setProgress(getProgressBarPercentage(millisUntilFinished, timeBetween));
+                } else {
+                    float progressBarPercentage = getProgressBarPercentage(millisUntilFinished, timeBetween);
+                    circularProgressView.animateProgressChange(progressBarPercentage, 2000L);
+                }
             }
 
             public void onFinish() {

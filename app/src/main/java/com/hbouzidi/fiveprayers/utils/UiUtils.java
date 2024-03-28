@@ -12,15 +12,20 @@ import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
 import android.text.Layout;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
 import android.text.StaticLayout;
 import android.text.TextDirectionHeuristics;
 import android.text.TextPaint;
+import android.text.style.RelativeSizeSpan;
 import android.view.Display;
 import android.view.WindowManager;
 
 import androidx.annotation.ColorRes;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+
+import com.hbouzidi.fiveprayers.R;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -47,7 +52,7 @@ public class UiUtils {
         long minutes = seconds / 60;
         long hours = minutes / 60;
 
-        return "- " + String.format(Locale.getDefault(), "%1$02d", Math.abs(hours)).replaceFirst("^[0٠]+(?!$)", "") + ":" + String.format(Locale.getDefault(), "%1$02d", Math.abs(minutes % 60)).replaceFirst("^[0٠]+(?!$)", "") + ":" + String.format(Locale.getDefault(), "%1$02d", Math.abs(seconds % 60)).replaceFirst("^[0٠]+(?!$)", "");
+        return "- " + String.format(Locale.getDefault(), "%1$02d", Math.abs(hours)) + ":" + String.format(Locale.getDefault(), "%1$02d", Math.abs(minutes % 60)) + ":" + String.format(Locale.getDefault(), "%1$02d", Math.abs(seconds % 60));
     }
 
     public static String formatTimeForWidgetTimer(long time, String hoursSeparator, String minutesSeparator) {
@@ -86,34 +91,16 @@ public class UiUtils {
     }
 
     public static String formatReadableGregorianDate(ZonedDateTime zonedDateTime) {
-        DateTimeFormatter formatter = DateTimeFormatter
-                .ofLocalizedDate(FormatStyle.FULL)
-                .withLocale(Locale.getDefault());
-
-        try {
-            return zonedDateTime.toLocalDate()
-                    .format(formatter.withDecimalStyle(DecimalStyle.of(Locale.getDefault()))).replaceAll("[٬،.]", "");
-        } catch (UnsupportedOperationException e) {
-            return zonedDateTime.toLocalDate().format(formatter).replaceAll("[٬،.]", "");
-        }
+        return formatReadableGregorianDate(zonedDateTime.toLocalDate(), FormatStyle.FULL);
     }
 
     public static String formatMediumReadableGregorianDate(ZonedDateTime zonedDateTime) {
-        DateTimeFormatter formatter = DateTimeFormatter
-                .ofLocalizedDate(FormatStyle.LONG)
-                .withLocale(Locale.getDefault());
-
-        try {
-            return zonedDateTime.toLocalDate()
-                    .format(formatter.withDecimalStyle(DecimalStyle.of(Locale.getDefault()))).replaceAll("[٬،.]", "");
-        } catch (UnsupportedOperationException e) {
-            return zonedDateTime.toLocalDate().format(formatter).replaceAll("[٬،.]", "");
-        }
+        return formatReadableGregorianDate(zonedDateTime.toLocalDate(), FormatStyle.LONG);
     }
 
-    public static String formatReadableGregorianDate(LocalDate localDate) {
+    public static String formatReadableGregorianDate(LocalDate localDate, FormatStyle dateStyle) {
         DateTimeFormatter formatter = DateTimeFormatter
-                .ofLocalizedDate(FormatStyle.FULL)
+                .ofLocalizedDate(dateStyle)
                 .withLocale(Locale.getDefault());
 
         try {
@@ -260,6 +247,16 @@ public class UiUtils {
         builder.append("'");
         builder.append(longitudeSplit[2]);
         builder.append("\"");
+
+        return builder.toString();
+    }
+
+    public static String getIslamicPhrase(String text, Context context) {
+        SpannableStringBuilder builder = new SpannableStringBuilder();
+        Typeface typeface = ResourcesCompat.getFont(context, R.font.aga_islamic_phrases);
+        builder.append(text);
+        builder.setSpan(new CustomTypefaceSpan(typeface), 0, builder.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.setSpan(new RelativeSizeSpan(2.5f), 0, builder.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         return builder.toString();
     }

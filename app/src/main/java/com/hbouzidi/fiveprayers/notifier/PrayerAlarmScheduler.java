@@ -21,6 +21,7 @@ import com.hbouzidi.fiveprayers.utils.TimingUtils;
 import com.hbouzidi.fiveprayers.utils.UiUtils;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -74,6 +75,20 @@ public class PrayerAlarmScheduler {
 
         if (preferencesHelper.isDailyVerseEnabled()) {
             scheduleDailyVerse(dayPrayer);
+        }
+
+        if (preferencesHelper.isQuranReadingSchedulerNotificationEnabled()
+                && (LocalDate.now().isAfter(preferencesHelper.getReadingScheduleStartDateNotification())
+                || LocalDate.now().isEqual(preferencesHelper.getReadingScheduleStartDateNotification()))) {
+            scheduleQuranReadingSchedulerNotification();
+        }
+
+        if (preferencesHelper.isInvocationsNotificationsEnabled()) {
+            scheduleInvocations(true, dayPrayer);
+        }
+
+        if (preferencesHelper.isInvocationsNotificationsEnabled()) {
+            scheduleInvocations(false, dayPrayer);
         }
     }
 
@@ -212,20 +227,66 @@ public class PrayerAlarmScheduler {
 
         LocalDateTime sunriseTiming = timings.get(ComplementaryTimingEnum.SUNRISE);
 
-            if (sunriseTiming != null && LocalDateTime.now().isBefore(sunriseTiming)) {
-                Log.i(TAG, "Scheduling Daily Verse at : " + TimingUtils.formatTiming(sunriseTiming));
+        if (sunriseTiming != null && LocalDateTime.now().isBefore(sunriseTiming)) {
+            Log.i(TAG, "Scheduling Daily Verse at : " + TimingUtils.formatTiming(sunriseTiming));
 
-                AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                Intent intent = new Intent(context, DailyVerseReceiver.class);
+            AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(context, DailyVerseReceiver.class);
 
-                intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
-                PendingIntent alarmIntent = PendingIntentCreator.getBroadcast(context, 542, intent, FLAG_UPDATE_CURRENT);
-                alarmMgr.cancel(alarmIntent);
+            PendingIntent alarmIntent = PendingIntentCreator.getBroadcast(context, 542, intent, FLAG_UPDATE_CURRENT);
+            alarmMgr.cancel(alarmIntent);
 
-                scheduleAlarm(sunriseTiming, alarmMgr, alarmIntent);
-            }
+            scheduleAlarm(sunriseTiming, alarmMgr, alarmIntent);
+        }
         Log.i(TAG, "End scheduling Daily Verse for: " + dayPrayer.getDate());
+    }
+
+    private void scheduleQuranReadingSchedulerNotification() {
+        Log.i(TAG, "Start scheduling Quran Reading for: " + LocalDate.now());
+
+        LocalDateTime readingScheduleNotificationTime = LocalDate.now().atTime(preferencesHelper.getReadingScheduleNotificationTime());
+
+        if (LocalDateTime.now().isBefore(readingScheduleNotificationTime)) {
+            Log.i(TAG, "Scheduling Quran Reading at : " + TimingUtils.formatTiming(readingScheduleNotificationTime));
+
+            AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(context, QuranReadingReceiver.class);
+
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+
+            PendingIntent alarmIntent = PendingIntentCreator.getBroadcast(context, 543, intent, FLAG_UPDATE_CURRENT);
+            alarmMgr.cancel(alarmIntent);
+
+            scheduleAlarm(readingScheduleNotificationTime, alarmMgr, alarmIntent);
+        }
+        Log.i(TAG, "End scheduling Quran Reading for: " + LocalDate.now());
+    }
+
+    private void scheduleInvocations(boolean morningInvocation, @NonNull DayPrayer dayPrayer) {
+        Log.i(TAG, "Start scheduling Notification for Invocations");
+
+        Map<PrayerEnum, LocalDateTime> timings = dayPrayer.getTimings();
+
+        LocalDateTime notificationTime = morningInvocation ? timings.get(PrayerEnum.FAJR).plus(30, ChronoUnit.MINUTES) : timings.get(PrayerEnum.MAGHRIB).plus(30, ChronoUnit.MINUTES);
+
+        if (notificationTime != null && LocalDateTime.now().isBefore(notificationTime)) {
+            Log.i(TAG, "Scheduling Invocations at : " + TimingUtils.formatTiming(notificationTime));
+
+            AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(context, InvocationsReceiver.class);
+            intent.putExtra("IS_MORNING_INVOCATIONS", morningInvocation);
+            intent.putExtra("NOTIFICATION_ID", morningInvocation ? 1629 : 1630);
+
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+
+            PendingIntent alarmIntent = PendingIntentCreator.getBroadcast(context, morningInvocation ? 1529 : 1530, intent, FLAG_UPDATE_CURRENT);
+            alarmMgr.cancel(alarmIntent);
+
+            scheduleAlarm(notificationTime, alarmMgr, alarmIntent);
+        }
+        Log.i(TAG, "End scheduling Invocations for: " + dayPrayer.getDate());
     }
 
     private PendingIntent getSilenterPendingIntent(int index, AlarmManager alarmMgr, boolean turnToSilent) {
